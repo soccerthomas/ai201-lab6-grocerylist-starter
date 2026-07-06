@@ -150,3 +150,30 @@ def mark_purchased(list_id: str, item_id: str, user_id: str) -> Item:
     item.purchased_at = datetime.now(timezone.utc)
     db.session.commit()
     return item
+
+
+def purchase_all_items(list_id: str, user_id: str) -> int:
+    """
+    Mark all unpurchased items in a list as purchased.
+
+    Args:
+        list_id: ID of the grocery list.
+        user_id: ID of the user performing the bulk purchase.
+
+    Returns:
+        The number of items marked as purchased.
+
+    Raises:
+        ValueError: If the list does not exist.
+    """
+    grocery_list = db.session.get(GroceryList, list_id)
+    if not grocery_list:
+        raise ValueError(f"List {list_id!r} not found")
+    
+    items = Item.query.filter_by(list_id=list_id, is_purchased=False).all()
+    for item in items:
+        item.is_purchased = True
+        item.purchased_by = user_id
+        item.purchased_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return len(items)
