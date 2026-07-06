@@ -177,3 +177,35 @@ def purchase_all_items(list_id: str, user_id: str) -> int:
         item.purchased_at = datetime.now(timezone.utc)
     db.session.commit()
     return len(items)
+
+
+def get_list_stats(list_id: str) -> dict:
+    """
+    Compute summary statistics for a grocery list.
+
+    Returns a dict with:
+        list_id      — the list ID
+        total_items  — total number of items on the list
+        purchased    — number of items marked as purchased
+        remaining    — number of items not yet purchased
+        by_category  — item counts grouped by category (remaining items only)
+    """
+    items = Item.query.filter_by(list_id=list_id).all()
+
+    total = len(items)
+    purchased = sum(1 for item in items if item.is_purchased)
+    remaining = total - purchased
+
+    by_category = {}
+    for item in items:
+        if not item.is_purchased:  # Only count remaining items
+            cat = item.category or "uncategorized"
+            by_category[cat] = by_category.get(cat, 0) + 1
+
+    return {
+        "list_id": list_id,
+        "total_items": total,
+        "purchased": purchased,
+        "remaining": remaining,
+        "by_category": by_category,
+    }

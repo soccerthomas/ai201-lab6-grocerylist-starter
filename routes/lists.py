@@ -138,3 +138,13 @@ def purchase_all(list_id):
         return jsonify({"purchased": count}), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
+
+
+@lists_bp.route("/<list_id>/stats", methods=["GET"])
+def list_stats(list_id):
+    """Return summary statistics for a grocery list."""
+    try:
+        stats = list_service.get_list_stats(list_id)
+        return jsonify(stats), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
