@@ -156,3 +156,39 @@ Verified:
 - Mixed state (some purchased, some not): Only unpurchased count is returned ✓
 - Idempotency: Calling multiple times doesn't re-mark already-purchased items ✓
 - No impact on `mark_purchased()` or other routes ✓
+
+---
+
+### Issue #2.1: List Stats Counts All Items Instead of Remaining
+
+**How you reproduced it:**
+
+Called `GET /lists/0f040721-bc19-4175-81da-8a4352d653ee/stats` on Party Supplies list with 4 total items (2 purchased, 2 remaining).
+- Expected: `by_category` shows only the 2 remaining items per category
+- Actual: `by_category` showed all 4 items (including purchased ones)
+
+**How you found the root cause:**
+
+Examined `get_list_stats()` in `prs/pr2_list_stats.py` and compared to the PR description which stated the frontend needs to "break down what's remaining by category — so someone shopping...can see 'I still need 2 things in produce, 1 in dairy'". The function was counting all items instead of just unpurchased ones.
+
+**The root cause:**
+
+`get_list_stats()` loops through all items and counts every one in `by_category`, without checking `is_purchased` status. For a shopping trip, users need to know what's LEFT to buy by section, not what they've already bought. The function correctly calculates `remaining` count, but then contradicts it by showing all items in the category breakdown.
+
+**Your fix and side-effect check:**
+
+Added `if not item.is_purchased:` check before incrementing the category counter:
+
+```python
+by_category = {}
+for item in items:
+    if not item.is_purchased:  # ← Only count remaining items
+        cat = item.category or "uncategorized"
+        by_category[cat] = by_category.get(cat, 0) + 1
+```
+
+Verified:
+- Party Supplies list: `by_category: {"beverages":1,"supplies":1}` shows only 2 remaining items ✓
+- `by_category` totals now match `"remaining"` count ✓
+- `total_items` and `purchased` counts unchanged ✓
+- No impact on other routes ✓
